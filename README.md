@@ -3,7 +3,9 @@
 This project has received funding from the European Research Council (ERC) under the European Union's Horizon 2020 research and innovation programme (grant agreement No 101001567).
 
 ## Packges required for the SAXS
-PyFAI version 0.21.3
+\begin{itemize}
+\item PyFAI version 0.21.3
+\end{itemize}
 scipy version 1.9.3
 matplotlib version 3.6.2
 ipympl version 0.9.2
