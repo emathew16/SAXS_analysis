@@ -4,9 +4,8 @@ This project has received funding from the European Research Council (ERC) under
 
 ## Packges required for the SAXS
 
-PyFAI version 0.21.3 \\
-
-scipy version 1.9.3
-matplotlib version 3.6.2
-ipympl version 0.9.2
-Python version 3.8.8
+PyFAI version 0.21.3 \
+scipy version 1.9.3 \
+matplotlib version 3.6.2 \
+ipympl version 0.9.2 \
+Python version 3.8.8 \
