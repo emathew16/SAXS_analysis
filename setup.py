@@ -5,13 +5,13 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="saxs_analysis",
-    version="0.0.1",
+    version="0.0.2",
     author="Elizabeth Mathew",
     author_email="Elizabeth.Mathew@hereon.de",
-    description="A small example package",
+    description="SAXS python package",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/pypa/sampleproject",
+    url="https://github.com/emathew16/SAXS_analysis",
     packages=setuptools.find_packages(),
     classifiers=[
         "Programming Language :: Python :: 3",
