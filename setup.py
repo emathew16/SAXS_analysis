@@ -20,11 +20,4 @@ setuptools.setup(
         "Operating System :: OS Independent",
     ],
 )
-from setuptools import find_packages, setup
 
-setup(
-    name='mypkg',
-    version='0.1',
-    packages=find_packages(),
-    py_modules=['bacon']
-)
