@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="saxs_analysis",
-    version="0.0.4",
+    version="0.0.5",
     author="Elizabeth Mathew",
     author_email="Elizabeth.Mathew@hereon.de",
     description="SAXS python package",
