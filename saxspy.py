@@ -400,7 +400,7 @@ def scotch_minus_metal_plot(filedetails,file_saxs,dist=None,n=None):
 #    
 #------------------------------------------------  
         
- def my_dpi():
+def my_dpi():
     figure = plt.figure()
     dpi = figure.dpi
     plt.close()
