@@ -392,6 +392,7 @@ def scotch_minus_metal_plot(filedetails,file_saxs,dist=None,n=None):
     plt.xlabel("q ($m^{-1}$)", fontsize=14)
     plt.tight_layout()
     plt.show()
+    return
      
 #------------------------------------------------
 #    
