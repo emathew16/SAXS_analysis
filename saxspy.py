@@ -129,14 +129,7 @@ def one_D_transform(filename,mask_file=None,masking=False):
                             hist['I_corr'][int(bin1)] = hist['I_corr'][int(bin1)]+data[i][j]
         return hist,numofsteps
     if masking==True:
-        mask = np.load(mask_file, allow_pickle=True)
-        mask_t = mask.transpose()
-        data_mask=data2D.copy()
-        for i in np.arange(0,shape[0],1):
-            for j in np.arange(0,shape[1],1):
-                if mask_t[i][j]==0:
-                    data_mask[i][j]=-144
-        hist,numofsteps=hist_normalize(data_mask,obj)
+        hist,numofsteps=hist_normalize(mask_file,obj)
     else:
         hist,numofsteps= hist_normalize(data2D,obj)
     #step6 : create another histogram to save the normalised results
@@ -406,4 +399,400 @@ def scotch_minus_metal_plot(filedetails,file_saxs,dist=None,n=None):
 #    
 #------------------------------------------------  
         
+ def my_dpi():
+    figure = plt.figure()
+    dpi = figure.dpi
+    plt.close()
+    return dpi
+
+#------------------------------------------------
+#    
+# ## Function to export the edf image
+#    
+#------------------------------------------------  
+
+def export_figure_matplotlib(filename, resize_fact=1, plt_show=False,loc=None):
+    """
+    Export edf file to png in original resolution. The file is saved as my_image.png
+    It will be saved in the working directory or the directory according to your 
+    specification that iu specify in loc.
+    f_name: name of file where to save figure
+    resize_fact: resize facter wrt shape of arr, in (0, np.infty)
+    plt_show: show plot or not
+    loc: location where the png file would be saved eg: './tmp/'
+    
+    """
+    fig = plt.figure(frameon=False)
+    obj=fabio.open(filename)
+    data=obj.data
+    dpi=my_dpi()
+    plt.ioff()
+    fig.set_size_inches(data.shape[1]/dpi, data.shape[0]/dpi)
+    ax = plt.Axes(fig, [0., 0., 1., 1.])
+    ax.set_axis_off()
+    fig.add_axes(ax)
+    #ax.imshow(arr)
+    save_cwd=os.getcwd()
+    colornorm = SymLogNorm(1, base=10,
+                           vmin=np.nanmin(1),
+                           vmax=np.nanmax(data))
+    ax.imshow(data,
+            cmap="jet",
+            norm=colornorm)
+    plt.axis('off')
+    plt.margins(x=0)
+    
+    if loc != None:
+        plt.savefig(loc+'my_image.png', dpi=(dpi * resize_fact))
+        savefig=save_cwd+loc
+    else:
+        plt.savefig('my_image.png', dpi=(dpi * resize_fact))
+        savefig=save_cwd
+    return savefig
+    
+#------------------------------------------------
+#
+# ## Function to create an ellipse
+#    
+#------------------------------------------------  
+
+
+def create_ellipse(filename):
+    '''loc=Location of the mask image
+       data=filename
+       Note:I am using the colour to identify the ellipse range so check for material a bit 
+       before using this function, like if the ring is in the Turquoise colour. For my material 
+       this was the colour for this intensity. So I have a function named check ellipse that will plot
+       major axis for checking if required 
+       '''
+    
+    obj=fabio.open(filename)
+    data=obj.data
+    dpi=my_dpi()
+    image_loc=export_figure_matplotlib(filename)
+    img = cv2.imread(image_loc+'/my_image.png')
+    plt.ioff()
+    #resized = cv2.resize(img, (data.shape[1],data.shape[0]))
+    image_hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+    mask = cv2.inRange(image_hsv, np.array([0,100,20],np.uint8), np.array([90,255,255],np.uint8))
+    Contour_image = mask.copy()
+    Contour, Hierarchy = cv2.findContours(mask, cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE)
+    cv2.drawContours(Contour_image, Contour, len(Hierarchy[0])-1, (255, 0, 170), 1)
+    List = []
+    for c in range(len(Hierarchy[0])):
+        for p in Contour[c]:
+            point_array = np.array(p[0], dtype = 'int')
+            List.append(tuple(point_array))
+    
+    import math
+    Major_List = []
+    for p1 in range(0, len(List)):
+        for p2 in range(p1+1, len(List)):
+            Distance = math.sqrt(math.pow(List[p1][0] - List[p2][0], 2) + math.pow(List[p1][1] - List[p2][1], 2))
+            Major_List.append([List[p1], List[p2], Distance])
+    Major_Axis_1 = max(Major_List, key = lambda sublist: sublist[2])
+    Major_List.remove(Major_Axis_1)
+    Major_Axis_2 = max(Major_List, key = lambda sublist: sublist[2])
+    #print('Major_1',Major_Axis_1)
+    #print('Major_2',Major_Axis_2)
+    slope2=[]
+    slope, intercept = np.polyfit([int(Major_Axis_1[0][0]),int(Major_Axis_1[1][0])],[int(Major_Axis_1[0][1]),int(Major_Axis_1[1][1])], 1)
+    slope2.append(slope)
+    #print(slope)
+    #plt.imshow(mask)
+    #plt.plot([248,269],[284,310])
+    #plt.scatter(float(obj.header['Center_1']),float(obj.header['Center_2']),c='r')
+    #plt.plot([int(Major_Axis_1[0][0]),int(Major_Axis_1[1][0])],[int(Major_Axis_1[0][1]),int(Major_Axis_1[1][1])])
+    #plt.show()
+    return slope 
+
+#------------------------------------------------
+#
+# ## Creating mask_minor image
+#    
+#------------------------------------------------  
+
+
+
+def make_mask_minor(filename,loc=None):
+    '''make a mask minor and 
+    '''
+    obj=fabio.open(filename)
+    data=obj.data
+    plt.ioff()
+    #plt.imshow(data)
+    save_cwd=os.getcwd()
+    image_file=export_figure_matplotlib(filename)
+    sl= create_ellipse(filename)
+    print(sl)
+    angle= math.degrees(math.atan(sl))
+    #print(angle)
+    #if angle<0:
+    #    ang= -angle
+    #else:
+    ang=angle
+    upper_limit=ang-15 # here I check what area I would like to choose across around the major and minor axis
+    lower_limit=ang+15
+    pt = (float(obj.header['Center_1']), float(obj.header['Center_2']))
+    slope1_minor = np.tan(np.pi/180*(lower_limit+90))
+    #print(slope1_minor)
+    slope2_minor = np.tan(np.pi/180*(upper_limit+90))
+    #print(slope2_minor)
+    
+    dpi=my_dpi()
+    b1_minor = pt[1] - slope1_minor * pt[0]
+    b2_minor = pt[1] - slope2_minor * pt[0]
+    #print(b1_minor, b2_minor)
+    x1_minor = [0,pt[0],0]
+    y1_minor = [slope1_minor*x1_minor[0]+b1_minor,pt[1],slope2_minor*x1_minor[2]+b2_minor]
+    x2_minor = [data.shape[1],pt[0],data.shape[1]]
+    y2_minor = [slope1_minor*x2_minor[0]+b1_minor,pt[1],slope2_minor*x2_minor[2]+b2_minor]
+    img = cv2.imread(image_file+'/my_image.png')
+    plt.imshow(img)
+    plt.fill(x1_minor, y1_minor,'w')
+    plt.fill(x2_minor, y2_minor,'w')
+    if sl<=-0.3 or sl >=0.3:
+        #print('yes')
+        plt.plot([0,data.shape[1]],[b1_minor,(slope1_minor*data.shape[1]+b1_minor)],'w',linewidth=2)
+        plt.plot([0,data.shape[1]],[b2_minor,(slope2_minor*data.shape[1]+b2_minor)],'w',linewidth=2)
+    plt.xlim(0,data.shape[1])
+    plt.ylim(data.shape[0],0)
+    pt = (float(obj.header['Center_1']), float(obj.header['Center_2']))
+    #print(pt)
+    #plt.scatter(pt[0],pt[1],200,c='g',marker = "o")
+    #plt.close()
+    if loc != None:
+        plt.savefig(loc+'/masked_trial_minor.png',bbox_inches='tight',pad_inches = 0,dpi=dpi)
+        savefig=save_cwd+loc
+    else:
+        plt.savefig('./masked_trial_minor.png',bbox_inches='tight',pad_inches = 0,dpi=dpi)
+        savefig=save_cwd
+        #print(savefig)
+    #plt.show()
+    return savefig,sl
+    
+#------------------------------------------------
+#
+# ## Creating mask_major image
+#    
+#------------------------------------------------  
+
+
+
+
+def make_mask_major(filename,loc=None):
+    '''make a mask minor and 
+    '''
+    obj=fabio.open(filename)
+    data=obj.data
+    plt.ioff()
+    image_file=export_figure_matplotlib(filename)
+    sl= create_ellipse(filename)
+    #print(sl)
+    angle= math.degrees(math.atan(sl))
+    #if angle<0:
+    #    ang= -angle
+    #else:
+    ang=angle
+    upper_limit=ang-15 # here I check what area I would like to choose across around the major and minor axis
+    lower_limit=ang+15
+    pt = (float(obj.header['Center_1']), float(obj.header['Center_2']))
+    slope1_major = np.tan(np.pi/180*(lower_limit))
+    #print(slope1_major)
+    slope2_major = np.tan(np.pi/180*(upper_limit))
+    #print(slope2_major)
+    slope=[slope1_major,slope2_major]
+    
+    dpi=my_dpi()
+    b1_major = pt[1] - slope1_major * pt[0]
+    b2_major = pt[1] - slope2_major * pt[0]
+    x1_major = [0,pt[0],0]
+    y1_major = [slope1_major*x1_major[0]+b1_major,pt[1],slope2_major*x1_major[2]+b2_major]
+    x2_major = [data.shape[1],pt[0],data.shape[1]]
+    y2_major = [slope1_major*x2_major[0]+b1_major,pt[1],slope2_major*x2_major[2]+b2_major]      
+    save_cwd=os.getcwd()
+    img = cv2.imread(image_file+'/my_image.png')
+    plt.imshow(img)
+    #fig = plt.figure(frameon=False)
+    plt.fill(x1_major, y1_major,'w')
+    plt.fill(x2_major, y2_major,'w')
+    if sl>=-3.7:
+        if sl <=3.7:
+            plt.plot([0,data.shape[1]],[b1_major,(slope1_major*data.shape[1]+b1_major)],'w',linewidth=2)
+            plt.plot([0,data.shape[1]],[b2_major,(slope2_major*data.shape[1]+b2_major)],'w',linewidth=2)
+    plt.xlim(0,data.shape[1])
+    plt.ylim(data.shape[0],0)
+    pt = (float(obj.header['Center_1']), float(obj.header['Center_2']))
+    #print(pt)
+    #plt.scatter(pt[0],pt[1],200,c='g',marker = "o")
+    #
+    if loc != None:
+        plt.savefig(loc+'/masked_trial_major.png',bbox_inches='tight',pad_inches = 0,dpi=dpi)
+        savefig=save_cwd+loc
+    else:
+        plt.savefig('./masked_trial_major.png',bbox_inches='tight',pad_inches = 0,dpi=dpi)
+        savefig=save_cwd
+    #plt.show(block=False)
+    #plt.show()
+    return savefig,sl
+    
+
+
+
+
+def major_mask(filename, loc=None):
+    obj=fabio.open(filename)
+    data=obj.data
+    data2D=data.transpose()
+    plt.ioff()
+    pt = (float(obj.header['Center_1']), float(obj.header['Center_2']))
+    #sl= create_ellipse(filename2)
+    image_loc,sl=make_mask_major(filename,loc=None)
+    #print(sl)
+    img_major =  cv2.imread(image_loc+"/masked_trial_major.png")
+    resized_major = cv2.resize(img_major, (data.shape[1],data.shape[0]))
+    #plt.imshow(resized_major)
+    #plt.scatter(pt[0],pt[1],c='g',marker = "X")
+    whiteMin = np.array([0, 0, 231],np.uint8)
+    whiteMax = np.array([180, 18, 255],np.uint8)
+    HSV_major  = cv2.cvtColor(resized_major,cv2.COLOR_BGR2HSV)
+    mask_major = cv2.inRange(HSV_major, whiteMin, whiteMax)
+    #plt.imshow(mask_major)
+    mask_major_t = mask_major.transpose()
+    data_mask_major=data2D.copy()
+    shape = data2D.shape
+    for i in np.arange(0,shape[0],1):
+        for j in np.arange(0,shape[1],1):
+            if sl>=-3.7:
+                if sl <=3.7:
+                #print('yes')
+                    if mask_major_t[i][j]==0:
+                        data_mask_major[i][j]=-144
+            if sl<-3.7 or sl>3.7:
+                if mask_major_t[i][j]!=0:
+                    data_mask_major[i][j]=-144 
+    #plt.close()
+    
+    return data_mask_major 
+
+
+
+
+
+def minor_mask(filename, loc=None):
+    obj=fabio.open(filename)
+    data=obj.data
+    data2D=data.transpose()
+    plt.ioff()
+    pt = (float(obj.header['Center_1']), float(obj.header['Center_2']))
+    #sl= create_ellipse(filename2)
+    image_loc,sl=make_mask_minor(filename,loc=None)
+    #print(sl)
+    img_minor =  cv2.imread(image_loc+"/masked_trial_minor.png")
+    resized_minor = cv2.resize(img_minor, (data.shape[1],data.shape[0]))
+    #plt.imshow(resized_major)
+    #plt.scatter(pt[0],pt[1],c='g',marker = "X")
+    whiteMin = np.array([0, 0, 231],np.uint8)
+    whiteMax = np.array([180, 18, 255],np.uint8)
+    HSV_minor  = cv2.cvtColor(resized_minor,cv2.COLOR_BGR2HSV)
+    mask_minor = cv2.inRange(HSV_minor, whiteMin, whiteMax)
+    #plt.imshow(mask_major)
+    mask_minor_t = mask_minor.transpose()
+    data_mask_minor=data2D.copy()
+    shape = data2D.shape
+    for i in np.arange(0,shape[0],1):
+        for j in np.arange(0,shape[1],1):
+            if sl>=-0.3:
+                if sl <=0.3:
+                #print('yes')
+                    if mask_minor_t[i][j]!=0:
+                        data_mask_minor[i][j]=-144
+            if sl<=-0.3 or sl>=0.3:
+                if mask_minor_t[i][j]==0:
+                    data_mask_minor[i][j]=-144 
+    #plt.close()
+    
+    return data_mask_minor 
+
+
+
+    
+#------------------------------------------------
+#    
+# Function to save the intensity and q vector in dataframe
+#    
+#------------------------------------------------      
+    
+    
+ 
+def scotch_minus_metal_dataframe(scotch_file,metal_file):
+    '''
+      function to plot the major, minor intensity vs q plot
+      parameters: scotch file and matel file, do a foe loop to include 
+      all of the files
+      
+      two outpot major and minor I vs q 
+      major_20,minor_20=scotch_minus_metal_dataframe(scotch_file,metal_file)
+      
+    '''
+
+        
+    filename_s_edf = scotch_file
+    s = fabio.open(filename_s_edf)
+    i_ratio_s = float(s.header['Intensity1'])/float(s.header['WaveLength'])
+
+    dt_s_major = one_D_transform(filename_s_edf)
+    dt_s_minor = one_D_transform(filename_s_edf)
+
+    filename_m_edf = metal_file
+    m = fabio.open(filename_m_edf)
             
+    i_ratio_m = float(m.header['Intensity1'])/float(m.header['WaveLength'])
+            
+    
+    mask_file_m_major=major_mask(filename_m_edf)
+    mask_file_m_minor=minor_mask(filename_m_edf)
+    plt.ioff()
+
+    dt_m_major = one_D_transform(filename_m_edf,mask_file_m_major,masking=True)
+    dt_m_minor = one_D_transform(filename_m_edf,mask_file_m_minor,masking=True)
+    dt_m_major['lim_q']=dt_m_major['q'][0:len(dt_m_major['I'])]
+    dt_m_minor['lim_q']=dt_m_minor['q'][0:len(dt_m_minor['I'])]
+    dt_m_major['I_sm']=dt_m_major['I']/i_ratio_m-dt_s_major['I'][0:len(dt_m_major['I'])]/i_ratio_s
+    dt_m_minor['I_sm']=dt_m_minor['I']/i_ratio_m-dt_s_minor['I'][0:len(dt_m_minor['I'])]/i_ratio_s
+    dt= pd.DataFrame(dt_m_major['lim_q']/10000000000,columns=['lim_q_major'])
+    dt['I_sm_major']= dt_m_major['I_sm']
+    df= pd.DataFrame(dt_m_minor['lim_q']/10000000000,columns=['lim_q_minor'])
+    df['I_sm_minor']= dt_m_minor['I_sm']
+                #print(dt)
+    dt=dt[dt['I_sm_major'] > 0]
+    df=df[df['I_sm_minor']>0]      
+    return dt.to_dict('list'),df.to_dict('list')
+
+#------------------------------------------------
+#    
+# Function to find the area under the curve
+#    
+#------------------------------------------------     
+
+
+def area_under_curve(major,minor):
+    result={}
+    #print(major)
+    a=[]
+    for i in np.arange(1,len(major)+1,1):
+        p_major=pd.DataFrame(major['{}'.format(i)])
+        #print(p_major)
+        p_minor=pd.DataFrame(minor['{}'.format(i)])
+        p_major=p_major[p_major['lim_q_major']>0.007]
+        p_major=p_major[p_major['lim_q_major']<0.039]
+        a_major=np.trapz(p_major['I_sm_major'],p_major['lim_q_major'])
+        p_minor=p_minor[p_minor['lim_q_minor']>0.007]
+        p_minor=p_minor[p_minor['lim_q_minor']<0.039]
+        a_minor=np.trapz(p_minor['I_sm_minor'],p_minor['lim_q_minor'])
+        a.append(a_major-a_minor)
+                
+    result['delta_area']=a
+    result['pos_center']=np.arange(0,len(major),1)
+    
+    return result           
